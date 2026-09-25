@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+
+
+<BorderPane fx:id="rootPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.myapp.HelloController">
+   <top>
+      <MenuBar fx:id="menuBar" BorderPane.alignment="CENTER">
+        <menus>
+          <Menu fx:id="fileMenu" mnemonicParsing="false" text="File">
+            <items>
+              <MenuItem fx:id="openFile" mnemonicParsing="false" onAction="#openFile" text="Open" />
+                  <MenuItem fx:id="openFolder" mnemonicParsing="false" onAction="#openFolder" text="Open folder" />
+                  <MenuItem fx:id="saveAs" mnemonicParsing="false" onAction="#saveAs" text="Save as..." />
+                  <MenuItem fx:id="save" mnemonicParsing="false" onAction="#save" text="Save" />
+            </items>
+          </Menu>
+          <Menu fx:id="editMenu" mnemonicParsing="false" text="Edit">
+            <items>
+              <MenuItem fx:id="deleteItem" mnemonicParsing="false" onAction="#deleteItem" text="Delete" />
+            </items>
+          </Menu>
+          <Menu fx:id="helpMenu" mnemonicParsing="false" text="Help">
+            <items>
+              <MenuItem fx:id="aboutItem" mnemonicParsing="false" onAction="#aboutItem" text="About" />
+            </items>
+          </Menu>
+        </menus>
+      </MenuBar>
+   </top>
+   <left>
+      <ListView fx:id="fileList" prefHeight="374.0" prefWidth="142.0" BorderPane.alignment="CENTER" onMouseClicked="#fileListClicked" />
+   </left>
+   <center>
+      <TextArea fx:id="editText" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+   </center>
+</BorderPane>

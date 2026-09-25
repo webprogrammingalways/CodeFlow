@@ -1,0 +1,136 @@
+/* ===========================================================
+   Sötét, mélykék - lila téma a HelloApplication számára
+   =========================================================== */
+
+.root {
+    -fx-background-color: #0d0b1e; /* nagyon mély sötétkék-lila háttér */
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* ---------- MenuBar ---------- */
+
+.menu-bar {
+    -fx-background-color: #1a1330;
+    -fx-border-color: #3a2a6b;
+    -fx-border-width: 0 0 1 0;
+}
+
+.menu-bar .label {
+    -fx-text-fill: #d8c8ff;
+}
+
+.menu-bar .menu:hover,
+.menu-bar .menu:showing {
+    -fx-background-color: #3a2a6b;
+}
+
+.context-menu {
+    -fx-background-color: #1a1330;
+    -fx-border-color: #4b2fae;
+    -fx-border-width: 1;
+}
+
+.menu-item .label {
+    -fx-text-fill: #d8c8ff;
+}
+
+.menu-item:focused {
+    -fx-background-color: #4b2fae;
+}
+
+.menu-item:focused .label {
+    -fx-text-fill: #ffffff;
+}
+
+/* ---------- ListView (bal oldali fájllista) ---------- */
+
+.list-view {
+    -fx-background-color: #150f2b;
+    -fx-border-color: #3a2a6b;
+    -fx-border-width: 0 1 0 0;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #b9a6e8;
+    -fx-padding: 6 10 6 10;
+}
+
+.list-cell:filled:hover {
+    -fx-background-color: #2a1f52;
+}
+
+.list-cell:filled:selected {
+    -fx-background-color: #6a3fc9;
+    -fx-text-fill: #ffffff;
+}
+
+/* ---------- TextArea (középső szerkesztő) ---------- */
+
+.text-area {
+    -fx-background-color: #150f2b;
+    -fx-control-inner-background: #150f2b;
+    -fx-text-fill: #e6dcff;
+    -fx-highlight-fill: #6a3fc9;
+    -fx-highlight-text-fill: #ffffff;
+}
+
+.text-area .content {
+    -fx-background-color: #150f2b;
+}
+
+.text-area .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+/* ---------- ScrollBar (jobb oldali) ---------- */
+
+.scroll-bar {
+    -fx-background-color: #1a1330;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #4b2fae;
+    -fx-background-radius: 6;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #6a3fc9;
+}
+
+.scroll-bar .track {
+    -fx-background-color: #150f2b;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: #b9a6e8;
+}
+
+/* ---------- Alert ablakok (About / hibaüzenet) ---------- */
+
+.alert {
+    -fx-background-color: #1a1330;
+}
+
+.alert .header-panel {
+    -fx-background-color: #2a1f52;
+}
+
+.alert .content.label {
+    -fx-text-fill: #e6dcff;
+}
+
+.alert .button-bar .button {
+    -fx-background-color: #4b2fae;
+    -fx-text-fill: #ffffff;
+}
+
+.alert .button-bar .button:hover {
+    -fx-background-color: #6a3fc9;
+}
