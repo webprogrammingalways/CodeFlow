@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
 <?import javafx.scene.control.MenuBar?>
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TreeView?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.web.HTMLEditor?>
@@ -36,11 +37,12 @@
       </MenuBar>
    </top>
    <left>
-      <ListView fx:id="fileList" prefHeight="374.0" prefWidth="142.0" BorderPane.alignment="CENTER" onMouseClicked="#fileListClicked" />
+      <TreeView fx:id="fileList" prefHeight="374.0" prefWidth="180.0" showRoot="false" BorderPane.alignment="CENTER" />
    </left>
    <center>
       <StackPane fx:id="editorStack" BorderPane.alignment="CENTER">
          <children>
+            <Label fx:id="watermarkLabel" text="CodeFlow" styleClass="watermark" mouseTransparent="true" />
             <TextArea fx:id="editText" prefHeight="200.0" prefWidth="200.0" />
             <HTMLEditor fx:id="htmlEditor" prefHeight="200.0" prefWidth="200.0" visible="false" managed="false" />
          </children>

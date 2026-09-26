@@ -1,0 +1,77 @@
+/* ===========================================================
+   CodeFlow - Kód szerkesztő (CodeArea) stílusa és
+   szintaxis-kiemelés színei
+   =========================================================== */
+
+.code-area {
+    -fx-background-color: #0f0a24;
+    -fx-font-family: "Consolas", "Cascadia Code", monospace;
+    -fx-font-size: 14px;
+}
+
+.text {
+    -fx-fill: #e6dcff;
+}
+
+/* Sorszámok a bal oldalon */
+.code-area .lineno {
+    -fx-background-color: #150f2b;
+    -fx-text-fill: #6a5a99;
+    -fx-padding: 0 8 0 8;
+    -fx-font-family: "Consolas", monospace;
+}
+
+/* Kijelölés színe */
+.code-area .selection {
+    -fx-fill: #4b2fae;
+}
+
+/* A kurzor színe */
+.code-area .caret {
+    -fx-stroke: #b9a6e8;
+}
+
+/* ---------- Szintaxis-kiemelés kategóriák ---------- */
+
+/* Kulcsszavak: if, else, for, while, return, class ... */
+.keyword {
+    -fx-fill: #c792ea;
+    -fx-font-weight: bold;
+}
+
+/* Adattípusok: int, float, string, boolean ... */
+.type {
+    -fx-fill: #82aaff;
+    -fx-font-weight: bold;
+}
+
+/* Stringek: "szöveg" '...' */
+.string {
+    -fx-fill: #a8e6a3;
+}
+
+/* Számok */
+.number {
+    -fx-fill: #f78c6c;
+}
+
+/* Kommentek: // ... vagy /* ... *\/ */
+.comment {
+    -fx-fill: #6a5a99;
+    -fx-font-style: italic;
+}
+
+/* Operátorok: + - * / == < > && || ! */
+.operator {
+    -fx-fill: #89ddff;
+}
+
+/* Függvény-/metódusnevek hívás előtt: nev( */
+.function {
+    -fx-fill: #ffcb6b;
+}
+
+/* Zárójelek, kapcsos zárójelek, pontosvessző */
+.paren {
+    -fx-fill: #d8c8ff;
+}

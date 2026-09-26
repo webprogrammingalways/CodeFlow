@@ -9,6 +9,10 @@ module com.example.myapp {
     requires org.apache.poi.ooxml;
     requires org.jsoup;
 
+    requires org.fxmisc.richtext;
+    requires org.fxmisc.flowless;
+    requires reactfx;
+
     opens com.example.myapp to javafx.fxml;
     exports com.example.myapp;
 }
