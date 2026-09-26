@@ -50,6 +50,13 @@
             <version>1.18.1</version>
         </dependency>
 
+        <!-- RichTextFX - szintaxis-kiemeléshez (kódfájlokhoz) -->
+        <dependency>
+            <groupId>org.fxmisc.richtext</groupId>
+            <artifactId>richtextfx</artifactId>
+            <version>0.11.3</version>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>

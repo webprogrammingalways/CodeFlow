@@ -9,6 +9,11 @@ import javafx.scene.web.HTMLEditor;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import org.apache.poi.xwpf.usermodel.*;
+import org.fxmisc.flowless.VirtualizedScrollPane;
+import org.fxmisc.richtext.CodeArea;
+import org.fxmisc.richtext.LineNumberFactory;
+import org.fxmisc.richtext.model.StyleSpans;
+import org.fxmisc.richtext.model.StyleSpansBuilder;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -21,6 +26,11 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class HelloController {
 
@@ -28,10 +38,13 @@ public class HelloController {
     private BorderPane rootPane;
 
     @FXML
-    private ListView<String> fileList;
+    private TreeView<File> fileList;
 
     @FXML
     private StackPane editorStack;
+
+    @FXML
+    private Label watermarkLabel;
 
     @FXML
     private TextArea editText;
@@ -39,11 +52,97 @@ public class HelloController {
     @FXML
     private HTMLEditor htmlEditor;
 
+    // A CodeArea-t kódból hozzuk létre és tesszük a StackPane-be,
+    // mert FXML-ből macerásabb lenne a VirtualizedScrollPane csomagolás miatt.
+    private CodeArea codeArea;
+    private VirtualizedScrollPane<CodeArea> codeScrollPane;
+
     private File currentFile;
     private File currentFolder;
 
-    // Melyik szerkesztő van most használatban: docx -> HTMLEditor, minden más -> TextArea
-    private boolean docxMode = false;
+    // Melyik szerkesztő van most használatban.
+    private enum EditorMode { NONE, TEXT, HTML, CODE }
+    private EditorMode currentMode = EditorMode.NONE;
+
+    // Azok a kiterjesztések, amiket "kódnak" tekintünk, és szintaxis-kiemelést kapnak.
+    private static final java.util.Set<String> CODE_EXTENSIONS = java.util.Set.of(
+            "java", "js", "ts", "py", "c", "cpp", "cs", "json", "xml", "html", "css", "sql"
+    );
+
+    // ==========================================================
+    //  INICIALIZÁLÁS
+    // ==========================================================
+    @FXML
+    private void initialize() {
+        codeArea = new CodeArea();
+        codeArea.setParagraphGraphicFactory(LineNumberFactory.get(codeArea));
+        codeArea.getStylesheets().add(
+                getClass().getResource("code-highlighting.css").toExternalForm()
+        );
+
+        // Élő szintaxis-kiemelés: minden szövegváltozáskor újraszínezzük.
+        codeArea.textProperty().addListener((obs, oldText, newText) ->
+                codeArea.setStyleSpans(0, computeHighlighting(newText))
+        );
+
+        codeScrollPane = new VirtualizedScrollPane<>(codeArea);
+        codeScrollPane.setVisible(false);
+        codeScrollPane.setManaged(false);
+
+        editorStack.getChildren().add(codeScrollPane);
+
+        // Induláskor semmilyen fájl nincs megnyitva: minden szerkesztőt
+        // elrejtünk, hogy a vízjel valóban látszódjon, ne takarja el semmi.
+        switchMode(EditorMode.NONE);
+
+        // A fájllista cellái: ikon + fájlnév. Mappára kattintva csak
+        // ki/be nyílik (a beépített TreeView viselkedés), fájlra kattintva
+        // pedig betöltjük a tartalmát.
+        fileList.setCellFactory(tv -> new TreeCell<File>() {
+            @Override
+            protected void updateItem(File file, boolean empty) {
+                super.updateItem(file, empty);
+                if (empty || file == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    setText(file.getName());
+                    setGraphic(new Label(iconFor(file)));
+                }
+            }
+        });
+
+        // Csak akkor töltünk be tartalmat, ha a kiválasztott elem valódi fájl
+        // (mappára kattintva nem próbál semmit "megnyitni", csak lenyílik/becsukódik).
+        fileList.getSelectionModel().selectedItemProperty().addListener((obs, oldItem, newItem) -> {
+            if (newItem != null) {
+                File file = newItem.getValue();
+                if (file != null && file.isFile()) {
+                    loadFile(file);
+                }
+            }
+        });
+    }
+
+    // Kis emoji-ikon a fájl típusa alapján.
+    private String iconFor(File file) {
+        if (file.isDirectory()) {
+            return "📁";
+        }
+        String ext = getExtension(file);
+        return switch (ext) {
+            case "java" -> "☕";
+            case "js", "ts" -> "🟨";
+            case "py" -> "🐍";
+            case "json" -> "📦";
+            case "html" -> "🌐";
+            case "css" -> "🎨";
+            case "docx" -> "📄";
+            case "md" -> "📝";
+            case "xml" -> "🧾";
+            default -> "📃";
+        };
+    }
 
     // --- FILE MENÜ ---
 
@@ -52,8 +151,9 @@ public class HelloController {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Fájl megnyitása");
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Minden támogatott", "*.txt", "*.docx", "*.java", "*.md", "*.json", "*.xml"),
-                new FileChooser.ExtensionFilter("Szövegfájl / kód", "*.txt", "*.java", "*.md", "*.json", "*.xml"),
+                new FileChooser.ExtensionFilter("Minden támogatott", "*.txt", "*.docx", "*.java", "*.md", "*.json", "*.xml", "*.js", "*.py", "*.css", "*.html"),
+                new FileChooser.ExtensionFilter("Szövegfájl", "*.txt", "*.md"),
+                new FileChooser.ExtensionFilter("Kódfájl", "*.java", "*.js", "*.ts", "*.py", "*.c", "*.cpp", "*.cs", "*.json", "*.xml", "*.html", "*.css", "*.sql"),
                 new FileChooser.ExtensionFilter("Word dokumentum", "*.docx")
         );
         File file = fileChooser.showOpenDialog(rootPane.getScene().getWindow());
@@ -71,37 +171,56 @@ public class HelloController {
 
         if (folder != null) {
             currentFolder = folder;
-            fileList.getItems().clear();
+            TreeItem<File> root = buildTree(folder);
+            root.setExpanded(true);
+            fileList.setRoot(root);
+            fileList.setShowRoot(false);
+        }
+    }
 
-            File[] files = folder.listFiles();
-            if (files != null) {
-                for (File f : files) {
-                    fileList.getItems().add(f.getName());
+    // Rekurzívan felépíti a mappa fastruktúráját: minden almappa is
+    // egy TreeItem lesz a saját gyerekeivel, amit a TreeView magától
+    // tud lenyitni/becsukni a nyilacska ikonnal.
+    private TreeItem<File> buildTree(File file) {
+        TreeItem<File> item = new TreeItem<>(file);
+
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                // mappák előre, utána ábécésorrend
+                Arrays.sort(children, (a, b) -> {
+                    if (a.isDirectory() != b.isDirectory()) {
+                        return a.isDirectory() ? -1 : 1;
+                    }
+                    return a.getName().compareToIgnoreCase(b.getName());
+                });
+
+                for (File child : children) {
+                    item.getChildren().add(buildTree(child));
                 }
             }
         }
-    }
 
-    @FXML
-    private void fileListClicked() {
-        String selectedName = fileList.getSelectionModel().getSelectedItem();
-        if (selectedName != null && currentFolder != null) {
-            File file = new File(currentFolder, selectedName);
-            loadFile(file);
-        }
+        return item;
     }
 
     // Közös betöltő metódus: a kiterjesztés alapján dönti el,
-    // hogy .docx (HTMLEditor, formázással) vagy sima szöveg (TextArea) legyen-e.
+    // hogy .docx (HTMLEditor), kód (CodeArea) vagy sima szöveg (TextArea) legyen-e.
     private void loadFile(File file) {
         try {
-            if (isDocx(file)) {
+            String extension = getExtension(file);
+
+            if (extension.equals("docx")) {
                 String html = docxToHtml(file);
                 htmlEditor.setHtmlText(html);
-                switchToHtmlEditor();
+                switchMode(EditorMode.HTML);
+            } else if (CODE_EXTENSIONS.contains(extension)) {
+                String content = Files.readString(file.toPath());
+                codeArea.replaceText(content);
+                switchMode(EditorMode.CODE);
             } else {
                 editText.setText(Files.readString(file.toPath()));
-                switchToTextArea();
+                switchMode(EditorMode.TEXT);
             }
             currentFile = file;
         } catch (IOException e) {
@@ -109,22 +228,27 @@ public class HelloController {
         }
     }
 
-    // Átkapcsol HTMLEditor nézetre (docx-hez), elrejtve a TextArea-t.
-    private void switchToHtmlEditor() {
-        docxMode = true;
-        editText.setVisible(false);
-        editText.setManaged(false);
-        htmlEditor.setVisible(true);
-        htmlEditor.setManaged(true);
+    private String getExtension(File file) {
+        String name = file.getName().toLowerCase();
+        int dot = name.lastIndexOf('.');
+        return dot == -1 ? "" : name.substring(dot + 1);
     }
 
-    // Átkapcsol sima TextArea nézetre (txt/kód-hoz), elrejtve a HTMLEditor-t.
-    private void switchToTextArea() {
-        docxMode = false;
-        htmlEditor.setVisible(false);
-        htmlEditor.setManaged(false);
-        editText.setVisible(true);
-        editText.setManaged(true);
+    // A három szerkesztő közül csak az aktuális látszik, a többi el van rejtve.
+    // A CodeFlow vízjel csak akkor látszik, amíg nincs megnyitva semmi.
+    private void switchMode(EditorMode mode) {
+        currentMode = mode;
+
+        watermarkLabel.setVisible(mode == EditorMode.NONE);
+
+        editText.setVisible(mode == EditorMode.TEXT);
+        editText.setManaged(mode == EditorMode.TEXT);
+
+        htmlEditor.setVisible(mode == EditorMode.HTML);
+        htmlEditor.setManaged(mode == EditorMode.HTML);
+
+        codeScrollPane.setVisible(mode == EditorMode.CODE);
+        codeScrollPane.setManaged(mode == EditorMode.CODE);
     }
 
     @FXML
@@ -142,6 +266,7 @@ public class HelloController {
         fileChooser.setTitle("Mentés másként");
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("Szövegfájl", "*.txt"),
+                new FileChooser.ExtensionFilter("Kódfájl", "*.java", "*.js", "*.py", "*.json", "*.xml", "*.html", "*.css"),
                 new FileChooser.ExtensionFilter("Word dokumentum", "*.docx")
         );
         File file = fileChooser.showSaveDialog(rootPane.getScene().getWindow());
@@ -152,30 +277,85 @@ public class HelloController {
         }
     }
 
-    // Közös mentő metódus: docx módban a HTMLEditor tartalmát menti
-    // vissza valódi .docx-be (formázással), egyébként a TextArea sima szövegét.
+    // Közös mentő metódus: az aktuális szerkesztő módja alapján dönti el, mit hogyan mentsen.
     private void writeToFile(File file) {
         try {
-            if (isDocx(file) || docxMode) {
-                htmlToDocx(htmlEditor.getHtmlText(), file);
-            } else {
-                Files.writeString(file.toPath(), editText.getText());
+            switch (currentMode) {
+                case HTML -> htmlToDocx(htmlEditor.getHtmlText(), file);
+                case CODE -> Files.writeString(file.toPath(), codeArea.getText());
+                default -> Files.writeString(file.toPath(), editText.getText());
             }
         } catch (IOException e) {
             showError("Nem sikerült menteni a fájlt: " + e.getMessage());
         }
     }
 
-    private boolean isDocx(File file) {
-        return file.getName().toLowerCase().endsWith(".docx");
+    // ==========================================================
+    //  SZINTAXIS-KIEMELÉS (CodeArea-hoz)
+    // ==========================================================
+
+    private static final String[] KEYWORDS = {
+            "if", "else", "for", "while", "do", "switch", "case", "default",
+            "return", "break", "continue", "class", "interface", "extends",
+            "implements", "new", "try", "catch", "finally", "throw", "throws",
+            "public", "private", "protected", "static", "final", "void",
+            "import", "package", "this", "super", "null", "true", "false",
+            "def", "function", "let", "const", "var", "elif", "and", "or", "not"
+    };
+
+    private static final String[] TYPES = {
+            "int", "float", "double", "long", "short", "byte", "char",
+            "boolean", "String", "string", "bool", "number", "object", "Object", "List", "Map"
+    };
+
+    private static final String KEYWORD_PATTERN = "\\b(" + String.join("|", KEYWORDS) + ")\\b";
+    private static final String TYPE_PATTERN = "\\b(" + String.join("|", TYPES) + ")\\b";
+    private static final String STRING_PATTERN = "\"([^\"\\\\]|\\\\.)*\"|'([^'\\\\]|\\\\.)*'";
+    private static final String NUMBER_PATTERN = "\\b\\d+(\\.\\d+)?\\b";
+    private static final String COMMENT_PATTERN = "//[^\n]*|/\\*(.|\\R)*?\\*/|#[^\n]*";
+    private static final String OPERATOR_PATTERN = "[+\\-*/%=<>!&|^~]+";
+    private static final String FUNCTION_PATTERN = "\\b([a-zA-Z_][a-zA-Z0-9_]*)(?=\\()";
+    private static final String PAREN_PATTERN = "[(){}\\[\\];,.]";
+
+    private static final Pattern PATTERN = Pattern.compile(
+            "(?<COMMENT>" + COMMENT_PATTERN + ")"
+                    + "|(?<STRING>" + STRING_PATTERN + ")"
+                    + "|(?<KEYWORD>" + KEYWORD_PATTERN + ")"
+                    + "|(?<TYPE>" + TYPE_PATTERN + ")"
+                    + "|(?<NUMBER>" + NUMBER_PATTERN + ")"
+                    + "|(?<FUNCTION>" + FUNCTION_PATTERN + ")"
+                    + "|(?<PAREN>" + PAREN_PATTERN + ")"
+                    + "|(?<OPERATOR>" + OPERATOR_PATTERN + ")"
+    );
+
+    private StyleSpans<Collection<String>> computeHighlighting(String text) {
+        Matcher matcher = PATTERN.matcher(text);
+        int lastEnd = 0;
+        StyleSpansBuilder<Collection<String>> builder = new StyleSpansBuilder<>();
+
+        while (matcher.find()) {
+            String styleClass =
+                    matcher.group("COMMENT") != null ? "comment" :
+                    matcher.group("STRING") != null ? "string" :
+                    matcher.group("KEYWORD") != null ? "keyword" :
+                    matcher.group("TYPE") != null ? "type" :
+                    matcher.group("NUMBER") != null ? "number" :
+                    matcher.group("FUNCTION") != null ? "function" :
+                    matcher.group("PAREN") != null ? "paren" :
+                    matcher.group("OPERATOR") != null ? "operator" :
+                    null;
+
+            builder.add(Collections.emptyList(), matcher.start() - lastEnd);
+            builder.add(Collections.singleton(styleClass), matcher.end() - matcher.start());
+            lastEnd = matcher.end();
+        }
+        builder.add(Collections.emptyList(), text.length() - lastEnd);
+        return builder.create();
     }
 
     // ==========================================================
     //  .docx  ->  HTML   (megnyitáshoz, HTMLEditor-be)
     // ==========================================================
-    // Végigmegyünk a docx bekezdésein és futásain (run), és minden
-    // run formázását (félkövér, dőlt, aláhúzott) megfelelő HTML
-    // tag-ekbe csomagoljuk, hogy a HTMLEditor helyesen jelenítse meg.
     private String docxToHtml(File file) throws IOException {
         StringBuilder html = new StringBuilder("<html><body>");
 
@@ -213,9 +393,6 @@ public class HelloController {
     // ==========================================================
     //  HTML  ->  .docx   (mentéshez, HTMLEditor tartalmából)
     // ==========================================================
-    // A jsoup-pal feldolgozzuk a HTMLEditor kimenetét: minden <p>
-    // egy docx bekezdés lesz, a <b>/<strong>, <i>/<em>, <u> tag-ek
-    // pedig a run formázását állítják be.
     private void htmlToDocx(String htmlContent, File file) throws IOException {
         Document jsoupDoc = Jsoup.parse(htmlContent);
 
@@ -224,7 +401,6 @@ public class HelloController {
 
             Elements paragraphs = jsoupDoc.body().select("> p, > div");
             if (paragraphs.isEmpty()) {
-                // Ha nincsenek <p> tag-ek, az egész body-t egy bekezdésként kezeljük.
                 XWPFParagraph paragraph = docxDocument.createParagraph();
                 appendNodeToParagraph(jsoupDoc.body(), paragraph, false, false, false);
             } else {
@@ -238,8 +414,6 @@ public class HelloController {
         }
     }
 
-    // Rekurzívan bejárja a HTML csomópontokat, és a szöveges részeket
-    // a megfelelő formázással (bold/italic/underline) írja bele a docx bekezdésbe.
     private void appendNodeToParagraph(Node node, XWPFParagraph paragraph,
                                         boolean bold, boolean italic, boolean underline) {
         for (Node child : node.childNodes()) {
@@ -271,18 +445,23 @@ public class HelloController {
 
     @FXML
     private void deleteItem(ActionEvent event) {
-        String selectedName = fileList.getSelectionModel().getSelectedItem();
-        if (selectedName != null && currentFolder != null) {
-            File file = new File(currentFolder, selectedName);
+        TreeItem<File> selected = fileList.getSelectionModel().getSelectedItem();
+        if (selected != null && selected.getValue() != null) {
+            File file = selected.getValue();
             if (file.delete()) {
-                fileList.getItems().remove(selectedName);
+                TreeItem<File> parent = selected.getParent();
+                if (parent != null) {
+                    parent.getChildren().remove(selected);
+                }
                 if (file.equals(currentFile)) {
                     currentFile = null;
                     editText.clear();
                     htmlEditor.setHtmlText("");
+                    codeArea.clear();
+                    switchMode(EditorMode.NONE);
                 }
             } else {
-                showError("Nem sikerült törölni a fájlt.");
+                showError("Nem sikerült törölni a fájlt (lehet, hogy nem üres mappa).");
             }
         }
     }
@@ -294,7 +473,7 @@ public class HelloController {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Névjegy");
         alert.setHeaderText(null);
-        alert.setContentText("CodeFlow — szövegszerkesztő JavaFX-ben.\n.docx = formázott (HTMLEditor)\n.txt/kód = sima szöveg (TextArea)");
+        alert.setContentText("CodeFlow — .docx = formázott szerkesztő, kódfájl = szintaxis-kiemelés, egyéb = sima szöveg.");
         alert.showAndWait();
     }
 
