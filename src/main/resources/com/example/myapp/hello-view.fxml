@@ -6,6 +6,8 @@
 <?import javafx.scene.control.MenuItem?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.web.HTMLEditor?>
 
 
 <BorderPane fx:id="rootPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.myapp.HelloController">
@@ -37,6 +39,11 @@
       <ListView fx:id="fileList" prefHeight="374.0" prefWidth="142.0" BorderPane.alignment="CENTER" onMouseClicked="#fileListClicked" />
    </left>
    <center>
-      <TextArea fx:id="editText" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+      <StackPane fx:id="editorStack" BorderPane.alignment="CENTER">
+         <children>
+            <TextArea fx:id="editText" prefHeight="200.0" prefWidth="200.0" />
+            <HTMLEditor fx:id="htmlEditor" prefHeight="200.0" prefWidth="200.0" visible="false" managed="false" />
+         </children>
+      </StackPane>
    </center>
 </BorderPane>
